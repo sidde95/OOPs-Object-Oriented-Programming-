@@ -36,5 +36,10 @@ contextBridge.exposeInMainWorld('electron', {
   // ── Export ─────────────────────────────────────────────────────────────────
   export: {
     toJSON: (username) => ipcRenderer.invoke('export:json', username)
+  },
+
+  // ── Notifications ──────────────────────────────────────────────────────────
+  notifications: {
+    send: (title, body) => ipcRenderer.invoke('notification:send', title, body)
   }
 })

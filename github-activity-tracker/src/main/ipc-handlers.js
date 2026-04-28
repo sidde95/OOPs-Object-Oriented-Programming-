@@ -1,4 +1,4 @@
-import { ipcMain, app } from 'electron'
+import { ipcMain, app, Notification } from 'electron'
 import { GitHubAPIService } from './services/GitHubAPIService.js'
 import { ActivityClassifier } from './services/ActivityClassifier.js'
 import { LocalStorage } from './services/LocalStorage.js'
@@ -38,21 +38,37 @@ export function registerIpcHandlers() {
     const token = db.getToken()
     const api = new GitHubAPIService(token)
 
-    const [profile, events] = await Promise.all([
+    // Fetch profile, events, commit history, and repo stats all in parallel
+    const [profile, events, commitHistory, repoStats] = await Promise.all([
       api.fetchUserProfile(username),
-      api.fetchUserEvents(username)
+      api.fetchUserEvents(username),
+      api.fetchCommitHistory(username),
+      api.fetchRepoStats(username)
     ])
 
-    // Classify the user's activity level
+    // Classify activity
     const weeklyCommits = classifier.countWeeklyCommits(events)
     const pace = classifier.classify(weeklyCommits)
 
-    // Build summary report
+    // Build chart data and streak from commit history
+    const weeklyChart  = classifier.groupByWeek(commitHistory)
+    const streak       = classifier.calculateStreak(commitHistory)
+
+    // Last 30 days of daily activity for the heatmap
+    const cutoff = new Date()
+    cutoff.setDate(cutoff.getDate() - 29)
+    cutoff.setHours(0, 0, 0, 0)
+    const dailyActivity = commitHistory.filter((d) => new Date(d.date) >= cutoff)
+
     const report = {
       profile,
       weeklyCommits,
       pace,
-      recentEvents: events.slice(0, 30)
+      recentEvents: events.slice(0, 30),
+      weeklyChart,
+      streak,
+      dailyActivity,
+      repoStats
     }
 
     // Cache this search in the local database
@@ -103,5 +119,18 @@ export function registerIpcHandlers() {
     }
 
     return { success: false, message: 'Save cancelled' }
+  })
+
+  // ── Notifications ──────────────────────────────────────────────────────────
+
+  ipcMain.handle('notification:send', (_event, title, body) => {
+    try {
+      if (Notification.isSupported()) {
+        new Notification({ title, body, silent: false }).show()
+      }
+    } catch {
+      // Notifications may not be supported on all platforms/environments
+    }
+    return { success: true }
   })
 }

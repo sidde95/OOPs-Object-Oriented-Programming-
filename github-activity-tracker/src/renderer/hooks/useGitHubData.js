@@ -35,6 +35,15 @@ export function useGitHubData() {
     try {
       const data = await window.electron.github.fetchUser(username.trim())
       setReport(data)
+
+      // Fire a desktop notification summarising the result
+      const streakText = data.streak?.current > 0
+        ? ` · 🔥 ${data.streak.current}-day streak`
+        : ''
+      window.electron.notifications.send(
+        `GitHub Activity: @${data.profile.login}`,
+        `${data.pace.emoji} ${data.pace.label} — ${data.weeklyCommits} commits this week${streakText}`
+      )
     } catch (err) {
       setError(err.message || 'Failed to fetch user data. Check your internet connection.')
     } finally {

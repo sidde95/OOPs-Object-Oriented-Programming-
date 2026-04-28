@@ -2,6 +2,8 @@ import { useState, useEffect } from 'react'
 import UserCard from './UserCard.jsx'
 import ActivityChart from './ActivityChart.jsx'
 import PaceIndicator from './PaceIndicator.jsx'
+import StreakChart from './StreakChart.jsx'
+import RepoStats from './RepoStats.jsx'
 import { useGitHubData } from '../hooks/useGitHubData.js'
 
 /**
@@ -150,6 +152,15 @@ export default function Dashboard() {
                 <ActivityChart data={report.weeklyChart || []} />
               </div>
             </div>
+
+            {/* Streak chart */}
+            <StreakChart
+              streak={report.streak}
+              dailyActivity={report.dailyActivity}
+            />
+
+            {/* Top repositories */}
+            <RepoStats repos={report.repoStats} />
 
             {/* Export button */}
             <div className="flex justify-end">

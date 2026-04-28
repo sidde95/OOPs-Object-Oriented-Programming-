@@ -98,6 +98,30 @@ export class GitHubAPIService {
   }
 
   /**
+   * Fetches the user's top repositories sorted by star count.
+   * Returns the top 6 repos with key metadata for the RepoStats panel.
+   * @param {string} username
+   * @returns {Promise<Array<{name, description, language, stars, forks, updatedAt, url}>>}
+   */
+  async fetchRepoStats(username) {
+    const repos = await this.#get(`/users/${username}/repos`, {
+      sort: 'stars',
+      direction: 'desc',
+      per_page: 6
+    })
+
+    return repos.map((repo) => ({
+      name:        repo.name,
+      description: repo.description || '',
+      language:    repo.language || null,
+      stars:       repo.stargazers_count,
+      forks:       repo.forks_count,
+      updatedAt:   repo.updated_at,
+      url:         repo.html_url
+    }))
+  }
+
+  /**
    * Fetches commit history across all repos for the past year.
    * Uses the /repos/:owner/:repo/commits endpoint for each repo.
    * @param {string} username

@@ -69,6 +69,66 @@ export class ActivityClassifier {
   }
 
   /**
+   * Calculates the current and longest commit streak from daily commit history.
+   *
+   * Current streak: consecutive days ending on today (or yesterday, to handle
+   * users who haven't committed yet today).
+   * Longest streak: the longest unbroken run in the entire history.
+   *
+   * @param {Array<{date: string, count: number}>} commitHistory - from GitHubAPIService
+   * @returns {{ current: number, longest: number }}
+   */
+  calculateStreak(commitHistory) {
+    if (!commitHistory || commitHistory.length === 0) {
+      return { current: 0, longest: 0 }
+    }
+
+    // Build a Set of ISO date strings that have at least one commit
+    const activeDates = new Set(
+      commitHistory.filter((d) => d.count > 0).map((d) => d.date)
+    )
+
+    // ── Current streak ────────────────────────────────────────────────────────
+    // Walk backwards from today; if today has no commits try yesterday
+    // (so a user who last committed yesterday doesn't lose their streak).
+    const today = new Date()
+    today.setHours(0, 0, 0, 0)
+
+    const toDateStr = (d) => d.toISOString().split('T')[0]
+
+    let cursor = new Date(today)
+    if (!activeDates.has(toDateStr(cursor))) {
+      cursor.setDate(cursor.getDate() - 1)
+    }
+
+    let current = 0
+    while (activeDates.has(toDateStr(cursor))) {
+      current++
+      cursor.setDate(cursor.getDate() - 1)
+    }
+
+    // ── Longest streak ────────────────────────────────────────────────────────
+    const sortedDates = [...activeDates].sort()
+    let longest = 0
+    let runLen  = 0
+    let prevDate = null
+
+    for (const dateStr of sortedDates) {
+      const d = new Date(dateStr)
+      if (prevDate !== null) {
+        const diffDays = Math.round((d - prevDate) / 86_400_000)
+        runLen = diffDays === 1 ? runLen + 1 : 1
+      } else {
+        runLen = 1
+      }
+      if (runLen > longest) longest = runLen
+      prevDate = d
+    }
+
+    return { current, longest }
+  }
+
+  /**
    * Counts commits per week for the past N weeks from a commit history array.
    * Used for building the bar chart in ActivityChart.jsx.
    * @param {Array<{date: string, count: number}>} commitHistory - from GitHubAPIService
